@@ -1,0 +1,4 @@
+# cluster credentials - never commit these
+kubeconfig
+*.kubeconfig
+.kube/
