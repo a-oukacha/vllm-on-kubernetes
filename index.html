@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>kube-vLLM · Production LLM Serving on Kubernetes</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/dark.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    :root {
+      --theme-color: #00ff41;
+      --sidebar-width: 300px;
+      --base-font-size: 16px;
+    }
+    body { background: #080808; color: #d6f5d6; font-family: 'Inter', system-ui, sans-serif; line-height: 1.7; }
+    .sidebar {
+      background: #0a0a0a;
+      border-right: 1px solid #00ff4122;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78em;
+    }
+    .sidebar-nav a { color: #00cc33; }
+    .sidebar-nav a:hover { color: #00ff41; text-shadow: 0 0 8px #00ff41; }
+    .sidebar-nav li.active > a { color: #00ff41; text-shadow: 0 0 10px #00ff41; border-right: 2px solid #00ff41; }
+    .app-name a { color: #00ff41; text-shadow: 0 0 12px #00ff41; font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.05em; }
+    .sidebar-nav p strong { color: #ff00ff; text-shadow: 0 0 6px #ff00ff88; font-size: 0.85em; letter-spacing: 0.1em; }
+    .markdown-section { background: #080808; color: #d6f5d6; font-family: 'Inter', system-ui, sans-serif; font-size: 1rem; line-height: 1.75; max-width: 860px; }
+    .markdown-section h1 { font-family: 'Space Grotesk', sans-serif; color: #00ff41; text-shadow: 0 0 14px #00ff4166; font-weight: 700; }
+    .markdown-section h2 { font-family: 'Space Grotesk', sans-serif; color: #ff00ff; text-shadow: 0 0 10px #ff00ff55; font-weight: 600; }
+    .markdown-section h3 { font-family: 'Space Grotesk', sans-serif; color: #00e5ff; text-shadow: 0 0 8px #00e5ff44; font-weight: 600; }
+    .markdown-section h4 { font-family: 'Space Grotesk', sans-serif; color: #f0c040; }
+    .markdown-section a { color: #00e5ff; text-shadow: 0 0 4px #00e5ff33; }
+    .markdown-section a:hover { color: #00ff41; text-shadow: 0 0 8px #00ff41; }
+    .markdown-section code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; background: #0d1a0d; color: #00ff41; border: 1px solid #00ff4122; border-radius: 3px; padding: 2px 6px; }
+    .markdown-section pre { background: #0a0f0a; border: 1px solid #00ff4122; border-radius: 6px; box-shadow: 0 0 16px #00ff4111; }
+    .markdown-section pre code { font-family: 'JetBrains Mono', monospace; color: #c8ffc8; background: transparent; border: none; padding: 0; }
+    .markdown-section blockquote { border-left: 3px solid #ff00ff; background: #0d000d; color: #f0b8f0; border-radius: 0 4px 4px 0; }
+    .markdown-section table th { background: #0a0f0a; color: #00ff41; border-color: #00ff4122; font-family: 'Space Grotesk', sans-serif; font-weight: 600; }
+    .markdown-section table td { border-color: #00ff4115; }
+    .markdown-section table tr:nth-child(2n) { background: #0a0f0a; }
+    .markdown-section hr { border-color: #00ff4122; box-shadow: 0 0 4px #00ff4133; }
+    .markdown-section strong { color: #f0c040; }
+    .markdown-section em { color: #b8e8b8; }
+    .search input { background: #0d0d0d; color: #00ff41; border: 1px solid #00ff4144; caret-color: #00ff41; font-family: 'Inter', sans-serif; }
+    .search input::placeholder { color: #008822aa; }
+    .content { border-left: none; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    window.$docsify = {
+      name: 'kube-vLLM',
+      nameLink: '/',
+      repo: '',
+      loadSidebar: true,
+      subMaxLevel: 2,
+      auto2top: true,
+      search: {
+        placeholder: 'Search the series…',
+        noData: 'No results',
+        depth: 3,
+      },
+      pagination: {
+        previousText: '← Previous',
+        nextText: 'Next →',
+        crossChapter: true,
+      },
+      copyCode: {
+        buttonText: 'Copy',
+        errorText: 'Error',
+        successText: 'Copied!',
+      },
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-pagination/dist/docsify-pagination.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-docker.min.js"></script>
+</body>
+</html>
