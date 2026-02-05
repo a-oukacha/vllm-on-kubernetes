@@ -1,4 +1,4 @@
-# 01 - GPU Kuberentes Fundamentals
+# 01 - GPU Kubernetes Fundamentals
 
 > **Scope:** how Kubernetes sees, schedules, and isolates GPUs - and the four ways to share one.
 > Everything here is the substrate the rest of the series stands on.
