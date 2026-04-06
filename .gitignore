@@ -2,3 +2,18 @@
 kubeconfig
 *.kubeconfig
 .kube/
+
+# local scratch
+*.log
+.env
+tmp/
+
+# editor / os
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# tooling
+node_modules/

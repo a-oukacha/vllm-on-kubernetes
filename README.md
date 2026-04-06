@@ -5,6 +5,7 @@ Kubernetes with vLLM and Ray: GPU plumbing, single-node vLLM, multi-node distrib
 Ray / LeaderWorkerSet, then gateway routing, autoscaling, reliability, security, benchmarking, and a
 full GitOps reference architecture.
 
+[![CI](https://github.com/Open-The-Gates/vllm-on-kubernetes/actions/workflows/ci.yml/badge.svg)](https://github.com/Open-The-Gates/vllm-on-kubernetes/actions/workflows/ci.yml)
 
 > Written for engineers who already know Kubernetes and want the production decisions, not a
 > hello-world. I wrote it to pin down the choices that actually matter when you put an LLM endpoint
