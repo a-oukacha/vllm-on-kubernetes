@@ -35,29 +35,40 @@ It assumes you already know Kubernetes. This is the production layer that sits o
 
 The whole platform on one page - each box maps to a chapter:
 
-```
-        ┌────────────────────────────────────────────────────────────┐
-        │  Clients (apps, agents, RAG pipelines)                      │
-        └───────────────┬────────────────────────────────────────────┘
-                        │  OpenAI-compatible HTTP
-        ┌───────────────▼────────────────────────────────────────────┐
-        │  LLM Gateway  (Gateway API Inference Extension / EPP)       │  <- ch 09
-        │  auth · rate limit · model routing · KV/prefix-aware LB     │
-        └───────────────┬────────────────────────────────────────────┘
-            ┌───────────┴───────────┬───────────────────────┐
-        ┌───▼────┐              ┌───▼────┐              ┌────▼────┐
-        │ vLLM   │   replicas   │ vLLM   │   …          │ RayServe│   <- ch 03/07/08
-        │ 8B     │ (HPA/KEDA)   │ 70B TP4│              │ 405B    │
-        └───┬────┘              └───┬────┘              └────┬────┘
-            │                       │                        │
-        ┌───▼───────────────────────▼────────────────────────▼───┐
-        │  GPU nodes  (Operator · MIG/DRA · NVLink/RDMA · DCGM)   │  <- ch 01/02/06
-        └─────────────────────────────────────────────────────────┘
-                        │ metrics
-        ┌───────────────▼────────────────────────────────────────────┐
-        │  Prometheus · Grafana · alerts · traces (ch 05/13)          │
-        └─────────────────────────────────────────────────────────────┘
-        Everything above is GitOps-managed (Argo CD) - ch 14
+```mermaid
+flowchart TD
+    C(["Clients · apps · agents · RAG pipelines"])
+
+    subgraph GITOPS["GitOps-managed via Argo CD · ch 14"]
+        direction TB
+        GW["<b>LLM Gateway</b> · ch 09<br/>Gateway API Inference Extension / EPP<br/><i>auth · rate limit · model routing · KV/prefix-aware LB</i>"]
+
+        subgraph SERVE["Serving replicas · ch 03 / 07 / 08"]
+            direction LR
+            V1["<b>vLLM 8B</b><br/>HPA / KEDA replicas"]
+            V2["<b>vLLM 70B</b><br/>TP4"]
+            RS["<b>RayServe 405B</b><br/>multi-node"]
+        end
+
+        GPU["<b>GPU nodes</b> · ch 01 / 02 / 06<br/>Operator · MIG/DRA · NVLink/RDMA · DCGM"]
+        OBS["<b>Observability</b> · ch 05 / 13<br/>Prometheus · Grafana · alerts · traces"]
+    end
+
+    C -->|OpenAI-compatible HTTP| GW
+    GW --> V1 & V2 & RS
+    V1 & V2 & RS --> GPU
+    GPU -->|metrics| OBS
+
+    classDef client fill:#eef2ff,stroke:#6366f1,stroke-width:1px,color:#1e1b4b;
+    classDef gw fill:#e0f2fe,stroke:#0284c7,stroke-width:1px,color:#0c4a6e;
+    classDef serve fill:#dcfce7,stroke:#16a34a,stroke-width:1px,color:#14532d;
+    classDef gpu fill:#ffedd5,stroke:#ea580c,stroke-width:1px,color:#7c2d12;
+    classDef obs fill:#f3e8ff,stroke:#9333ea,stroke-width:1px,color:#581c87;
+    class C client;
+    class GW gw;
+    class V1,V2,RS serve;
+    class GPU gpu;
+    class OBS obs;
 ```
 
 If you read nothing else, take this: **a model that fits one GPU is a Deployment problem; a model
