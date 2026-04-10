@@ -1,7 +1,6 @@
 # 03 - Deploying vLLM on Kubernetes
 
-> **Scope:** a single-node vLLM Deployment done the *current* way - the V1 engine, the
-> `vllm serve` CLI, the flags that actually move throughput/latency, and probes that don't lie.
+This is a single-node vLLM Deployment done the *current* way. You get the V1 engine, the `vllm serve` CLI, the flags that actually move throughput and latency, and probes that don't lie about whether the model is loaded.
 
 ## What vLLM is (and what changed)
 
@@ -92,9 +91,7 @@ spec:
 
 **Senior DevOps tip:** the `startupProbe` is the single most important change from naïve
 manifests. Without it you must inflate `readinessProbe.initialDelaySeconds` to cover worst-case
-model load - which then *delays liveness detection forever* once running. A `startupProbe` gives
-loading a long leash, then hands off to a tight readiness/liveness loop. This alone fixes most
-"probe killed my pod mid-load" CrashLoops.
+model load - which then *delays liveness detection forever* once running. A `startupProbe` gives loading a long leash and then hands off to a tight readiness/liveness loop. That alone fixes most "probe killed my pod mid-load" CrashLoops.
 
 ---
 
@@ -120,8 +117,7 @@ volumes:
 (`nvidia-smi topo -m`). For >8 GPUs / multi-node, you stop using a plain Deployment - see docs 06-08.
 
 **Senior Dev tip:** undersize `/dev/shm` and TP will hang or crash with cryptic NCCL/shm
-errors at startup. Rule of thumb: `sizeLimit` ≥ a few GB per GPU. The default container `/dev/shm`
-is 64MB - far too small. This is the #1 single-node TP footgun.
+errors at startup. Rule of thumb: `sizeLimit` ≥ a few GB per GPU, because the default container `/dev/shm` of 64MB is far too small. This is the #1 single-node TP footgun.
 
 ---
 
@@ -149,9 +145,9 @@ args:
   - --speculative-config={"model":"/models/Llama-3.2-1B-Instruct","num_speculative_tokens":5}
 ```
 
-**Senior Dev tip:** speculative decoding trades GPU compute for latency - it shines at
-**low concurrency** (an interactive assistant) and can *hurt* throughput at high concurrency where
-the batch is already full. Don't enable it blindly on a batch-heavy endpoint; A/B it with doc 13.
+**Senior Dev tip:** speculative decoding trades GPU compute for latency. It shines at
+**low concurrency** (an interactive assistant), but once the batch is already full at high
+concurrency it can *hurt* throughput. Don't enable it blindly on a batch-heavy endpoint; A/B it with doc 13.
 
 **Architect tip:** decide your precision strategy per *model tier*, not globally.
 Frontier-quality 70B+ on H100 -> FP8 weights + FP8 KV cache buys you 2× effective capacity at
@@ -232,7 +228,7 @@ vLLM exposes `GET /health`. The trap is conflating "process up" with "model load
 
 **Senior DevOps tip:** keep `livenessProbe` *conservative*. vLLM under extreme load can be
 briefly unresponsive on `/health`; an aggressive liveness probe will kill a healthy-but-busy
-engine and dump every in-flight request. Readiness should react fast; liveness should be patient.
+engine and dump every in-flight request. Let readiness react fast, but give liveness plenty of patience.
 
 ---
 

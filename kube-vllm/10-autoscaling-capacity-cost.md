@@ -1,17 +1,16 @@
 # 10 - Autoscaling, Capacity & Cost
 
-> **Scope:** how many GPUs you actually need, how to scale them on the *right* signal, how to
-> scale to zero without paying for idle frontier silicon, and the cost levers that decide whether
-> your platform is viable. This is where LLM serving stops being an engineering problem and becomes
-> a business one.
+Cost is the thing that kills LLM platforms. How many GPUs do you actually need? How do you scale them
+on the *right* signal, scale to zero without paying for idle frontier silicon, and pull the cost levers
+that decide whether the platform survives? That is the ground this chapter covers.
 
 ## First principle: GPUs are the budget
 
 A single H100 runs **$2-4/hr** on-demand (~$25-35k/yr if pinned). The dominant cost question for any
 LLM platform is *"how few GPU-hours can serve the SLO?"* Everything in this doc serves that question.
 
-**Architect tip:** the cheapest token is the one you don't generate on a GPU you're renting idle.
-The cost hierarchy, best to worst: (1) cache it (prefix/KV/semantic - docs 04/09), (2) route it to a
+**Architect tip:** an idle GPU you're renting is pure waste, so don't generate tokens on one when
+something cheaper can serve them. The cost hierarchy, best to worst: (1) cache it (prefix/KV/semantic - docs 04/09), (2) route it to a
 warm replica (doc 09), (3) batch it (vLLM continuous batching), (4) scale a replica up, (5) cold-boot
 a new GPU node. Optimize *up* that list before you add hardware. Most "we need more GPUs" requests
 are actually routing or batching problems.
@@ -106,7 +105,7 @@ expensive rarely-used big models scale to zero. One policy per model tier, not o
 
 ## Right-sizing the model to the hardware
 
-Often the biggest cost win isn't autoscaling - it's not over-provisioning per replica:
+The biggest cost win is often per-replica right-sizing, which beats any autoscaling tweak:
 
 | Lever | Effect | Cost impact |
 |---|---|---|

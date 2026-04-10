@@ -1,13 +1,15 @@
 # 09 - LLM Gateway & Routing
 
-> **Scope:** the traffic layer in front of your vLLM replicas - why round-robin is wrong for LLMs,
-> and how **KV/prefix-aware routing**, the **Gateway API Inference Extension**, and **disaggregated
-> prefill/decode** cut latency and cost without adding a single GPU.
+What sits in front of your vLLM replicas? This doc covers that traffic layer. Round-robin is the
+wrong default for LLMs, and we'll see why. Then **KV/prefix-aware routing**, the **Gateway API
+Inference Extension**, and **disaggregated prefill/decode** - three ways to cut latency and cost
+without adding a single GPU.
 
 ## Why a normal load balancer is wrong for LLMs
 
-A Kubernetes Service round-robins requests. For stateless web apps that's optimal. For LLM serving
-it's actively harmful, because vLLM replicas are stateful in two ways a plain LB can't see:
+A Kubernetes Service round-robins requests, which is exactly what you want for stateless web apps.
+LLM serving is a different beast: it's actively harmful here, because vLLM replicas are stateful in
+two ways a plain LB can't see:
 
 1. **Prefix cache** - a replica that already processed `system prompt + RAG context` can skip its
  prefill entirely on the next request that shares that prefix. Round-robin scatters related
@@ -18,8 +20,8 @@ it's actively harmful, because vLLM replicas are stateful in two ways a plain LB
 **Architect tip:** for your workloads - RAG, GraphRAG, agentic flows with big shared system
 prompts - prefix-aware routing is one of the highest-ROI changes available. Agent and RAG
 traffic is dominated by a large, repeated context prefix; routing the same prefix to the same
-replica turns most prefills into cache hits. It's free throughput: same GPUs, more capacity, lower
-TTFT. This is a routing decision, not a model decision.
+replica turns most prefills into cache hits. It's free throughput - same GPUs, more capacity, lower
+TTFT - and you get it purely by changing how you route, with the model left untouched.
 
 ---
 
@@ -45,7 +47,8 @@ gateway. It adds two ideas:
 **Senior DevOps tip:** GIE is built on the standard **Gateway API**, so it composes with the
 gateway you already run (Istio, Envoy Gateway, kgateway) rather than being a bespoke proxy. The EPP
 makes routing decisions from the *same* vLLM metrics you already scrape (doc 05) - `num_requests_waiting`,
-`gpu_cache_usage_perc`, prefix-cache signals. You're not inventing new telemetry, you're routing on it.
+`gpu_cache_usage_perc`, prefix-cache signals. No new telemetry to invent - you just route on what's
+already there.
 
 ### Install (Helm, OCI charts)
 

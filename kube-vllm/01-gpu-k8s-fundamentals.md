@@ -1,12 +1,11 @@
 # 01 - GPU Kubernetes Fundamentals
 
-> **Scope:** how Kubernetes sees, schedules, and isolates GPUs - and the four ways to share one.
-> Everything here is the substrate the rest of the series stands on.
+GPUs are not normal Kubernetes resources. This doc covers how Kubernetes sees, schedules, and isolates them, plus the four ways to share one. Everything here is the substrate the rest of the series stands on.
 
 ## Why GPU nodes are different
 
 Kubernetes natively understands two compressible/incompressible resources: CPU and memory.
-A GPU is neither - it's an opaque PCIe device exposed to containers through three cooperating layers:
+A GPU is neither. It is an opaque PCIe device exposed to containers through three cooperating layers:
 
 ```
 NVIDIA kernel driver        -> makes the GPU usable on the host
@@ -77,7 +76,7 @@ spec:
 
 **Senior Dev tip:** set `requests == limits` for CPU and memory too on GPU pods. A vLLM
 pod that gets CPU-throttled during the tokenizer/prefill path will show up as mysterious TTFT
-spikes that look like a GPU problem but aren't. Give it real CPU (8-32 cores) and pinned memory.
+spikes - they look like a GPU problem, but they aren't. Give it real CPU (8-32 cores) and pinned memory.
 
 ---
 
@@ -209,8 +208,8 @@ kubectl exec -it <pod> -- nvidia-smi topo -m
 # Legend: NV# = NVLink, PIX/PXB/SYS = PCIe (progressively worse)
 ```
 
-**Architect tip: the unit of capacity planning for large models is not the GPU, it's
-the NVLink island.** An 8×H100 SXM node is one island (fast TP up to 8). Two 4-GPU PCIe boxes
+**Architect tip: plan capacity for large models around the NVLink island, not the
+individual GPU.** An 8×H100 SXM node is one island (fast TP up to 8). Two 4-GPU PCIe boxes
 are *not* equivalent to one 8-GPU SXM box even with the same GPU count - see doc 06. Buy/rent
 topology, not just FLOPs.
 

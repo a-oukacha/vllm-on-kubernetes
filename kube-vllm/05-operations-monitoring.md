@@ -1,8 +1,8 @@
 # 05 - Operations & Monitoring
 
-> **Scope:** the signals that tell you whether vLLM is healthy, fast, and worth its GPU bill - 
-> plus the autoscaling and graceful-shutdown mechanics that keep it that way. Deep SLO/alerting
-> and load testing live in **doc 13**; this is the day-2 operational core.
+> This is the day-2 operational core: the signals that tell you whether vLLM is healthy, fast, and
+> worth its GPU bill, plus the autoscaling and graceful-shutdown mechanics that keep it that way -
+> deep SLO/alerting and load testing live in **doc 13**.
 
 ## The endpoints
 
@@ -41,8 +41,8 @@ not one number. A model can have great TTFT and miserable TPOT (feels like it st
 versa. Always SLO them separately (doc 13).
 
 **Senior DevOps tip:** `num_requests_waiting` is your autoscaling truth, *not* GPU utilization.
-A vLLM replica can run at 100% GPU UTIL while happily absorbing more load via batching - scaling on
-UTIL there wastes money. It can also have queue building while UTIL looks moderate. Scale on queue
+A vLLM replica can run at 100% GPU UTIL while happily absorbing more load via batching, so scaling on
+UTIL there just wastes money. Worse, a queue can build while UTIL still looks moderate. Scale on queue
 depth / running-vs-capacity, and let DCGM UTIL be a *diagnostic*, not a *trigger*.
 
 ---
@@ -128,7 +128,7 @@ spec:
 
 **Senior DevOps tip:** set a generous `cooldownPeriod` (and KEDA scale-down stabilization).
 GPU pods take minutes to come up (doc 04) and cost real money - flapping between 3 and 6 replicas
-every two minutes is the worst of both worlds. Scale up eagerly, scale down lazily. Capacity math
+every two minutes is the worst of both worlds. Be quick to add replicas and slow to remove them. Capacity math
 and scale-to-zero are in **doc 10**.
 
 **Architect tip:** horizontal replicas only help *throughput*, never single-request *latency*.

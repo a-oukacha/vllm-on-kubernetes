@@ -1,8 +1,6 @@
 # 07 - RayService: Production Distributed Serving
 
-> **Scope:** running vLLM as a **Ray Serve** application managed by **KubeRay's RayService** CRD - 
-> autoscaling, GCS fault tolerance, and zero-downtime upgrades. This is the heavyweight option
-> from doc 06; use it when you want Serve's *application* features, not just "launch a big model".
+Here you run vLLM as a **Ray Serve** application, managed by the **KubeRay's RayService** CRD. That buys you autoscaling, GCS fault tolerance, and zero-downtime upgrades. It's the heavyweight option from doc 06 - reach for it when you want Serve's *application* features, not just "launch a big model".
 
 ## Why RayService instead of `vllm serve` in a Deployment
 
@@ -184,9 +182,9 @@ obvious "version mismatch".
 ## GCS fault tolerance - why the Redis matters
 
 Without it, the Ray **head** holds all cluster metadata in memory. Head pod dies -> the entire Ray
-cluster (and your served model) is gone and must cold-start. With `gcsFaultToleranceOptions`
-pointing at an external Redis, head metadata persists: the head restarts, reconnects to Redis, and
-workers rejoin without a full rebuild.
+cluster (and your served model) is gone and must cold-start. Point `gcsFaultToleranceOptions` at an
+external Redis and that metadata persists - the head restarts, reconnects to Redis, and workers
+rejoin without a full rebuild.
 
 ```bash
 # minimal Redis for GCS FT (use a managed/HA Redis in real prod)
@@ -213,10 +211,10 @@ RayService has **two** independent autoscalers:
 
 They must be sized consistently: max Serve replicas × GPUs-per-replica ≤ max worker GPUs.
 
-**Architect tip:** this two-layer model is RayService's power *and* its trap. The Serve
-autoscaler wants a replica; the cluster autoscaler must then find/boot a GPU node (minutes - doc
-04). If `maxReplicas` (Serve) exceeds what `maxReplicas` (workers) can host, requests queue forever
-while Serve waits for capacity that can't arrive. Always derive Serve max from worker GPU max, and
+**Architect tip:** this two-layer model is RayService's biggest strength and its sharpest trap.
+When the Serve autoscaler asks for a replica, the cluster autoscaler has to find or boot a GPU node
+first, which takes minutes (doc 04). If `maxReplicas` (Serve) exceeds what `maxReplicas` (workers)
+can host, requests queue forever while Serve waits for capacity that can't arrive. Always derive Serve max from worker GPU max, and
 keep warm worker headroom for the first scale step. Capacity math is in **doc 10**.
 
 ---

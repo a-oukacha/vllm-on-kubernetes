@@ -1,72 +1,147 @@
-# vLLM on Kubernetes - Production LLM Serving
+<h1 align="center">vLLM on Kubernetes</h1>
 
-A deep, current (2026) walkthrough series for running large language models in production on
-Kubernetes with vLLM and Ray: GPU plumbing, single-node vLLM, multi-node distributed serving with
-Ray / LeaderWorkerSet, then gateway routing, autoscaling, reliability, security, benchmarking, and a
-full GitOps reference architecture.
+<p align="center">
+  <b>Production LLM serving on Kubernetes - the decisions that actually matter.</b><br>
+  A deep, current (2026) walkthrough series: from GPU plumbing to a full GitOps reference architecture.
+</p>
 
-[![CI](https://github.com/Open-The-Gates/vllm-on-kubernetes/actions/workflows/ci.yml/badge.svg)](https://github.com/Open-The-Gates/vllm-on-kubernetes/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://github.com/a-oukacha/vllm-on-kubernetes/actions/workflows/ci.yml"><img src="https://github.com/a-oukacha/vllm-on-kubernetes/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs welcome"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+</p>
 
-> Written for engineers who already know Kubernetes and want the production decisions, not a
-> hello-world. I wrote it to pin down the choices that actually matter when you put an LLM endpoint
-> behind an SLO: GPU sharing, KV cache, rollout safety, cost, and multi-tenancy.
+---
 
-## Who it is for
+## Motivation
 
-This assumes you are comfortable with Kubernetes already. It is the production layer on top: what to
-pick and why, where it breaks, and what it costs. Every chapter carries three tiers of field notes:
+**Learn how to serve large language models in production.**
 
-| Tier | Audience | Focus |
-|------|----------|-------|
-| Senior Dev tip | Application / model engineers | engine flags, model behavior, request shaping, KV cache |
-| Senior DevOps tip | Platform / SRE | scheduling, rollout, failure modes, observability, cost |
-| Architect tip | Staff / principal | trade-offs, topology, capacity, org boundaries, build-vs-buy |
+There is a lot written about getting `vllm serve` running on a laptop, and almost nothing about
+what happens after. This series is the part after: GPU sharing, KV cache, multi-node sharding,
+gateway routing, autoscaling, rollout safety, cost, and multi-tenancy. The choices that decide
+whether your LLM endpoint survives a real SLO.
 
-## Reading order
+**Get the production decisions, not a hello-world.**
 
-The chapters build on each other; read them in order.
+I wrote this to pin down the things I kept having to re-derive on real clusters: which engine flag
+actually moves latency, when a model stops being a Deployment and becomes a scheduling problem, how
+to roll out a new model without surprising your users, and where the money goes. Every chapter is
+opinionated about what to pick and honest about where it breaks.
 
-Part A - foundations (single node):
+It assumes you already know Kubernetes. This is the production layer that sits on top.
 
-1. [GPU + Kubernetes fundamentals](kube-vllm/01-gpu-k8s-fundamentals.md) - device plugin, CDI, MIG/MPS/time-slicing/DRA, taints, topology
-2. [GPU Operator](kube-vllm/02-gpu-operator.md) - ClusterPolicy, DCGM, GFD/NFD, driver strategy
-3. [Deploying vLLM](kube-vllm/03-vllm-deployment.md) - `vllm serve`, the V1 engine, modern flags, probes, sizing
-4. [Storage & models](kube-vllm/04-storage-and-models.md) - PVC strategies, fast model loading, OCI modelcars
-5. [Operations & monitoring](kube-vllm/05-operations-monitoring.md) - vLLM V1 metrics, DCGM, Prometheus/Grafana, KEDA basics
+## Have a look
 
-Part B - distributed & production:
+The whole platform on one page - each box maps to a chapter:
 
-6. [Distributed inference](kube-vllm/06-distributed-inference.md) - tensor/pipeline parallelism, when to go multi-GPU
-7. [RayService production serving](kube-vllm/07-rayservice-production-serving.md)
-8. [LeaderWorkerSet multi-node](kube-vllm/08-leaderworkerset-multinode.md)
-9. [LLM gateway & routing](kube-vllm/09-llm-gateway-routing.md)
-10. [Autoscaling, capacity & cost](kube-vllm/10-autoscaling-capacity-cost.md)
-11. [Reliability & rollouts](kube-vllm/11-reliability-rollouts.md)
-12. [Security & multi-tenancy](kube-vllm/12-security-multitenancy.md)
-13. [Benchmarking & observability](kube-vllm/13-benchmarking-observability.md)
-14. [Reference architecture & GitOps](kube-vllm/14-reference-architecture-gitops.md)
+```
+        ┌────────────────────────────────────────────────────────────┐
+        │  Clients (apps, agents, RAG pipelines)                      │
+        └───────────────┬────────────────────────────────────────────┘
+                        │  OpenAI-compatible HTTP
+        ┌───────────────▼────────────────────────────────────────────┐
+        │  LLM Gateway  (Gateway API Inference Extension / EPP)       │  <- ch 09
+        │  auth · rate limit · model routing · KV/prefix-aware LB     │
+        └───────────────┬────────────────────────────────────────────┘
+            ┌───────────┴───────────┬───────────────────────┐
+        ┌───▼────┐              ┌───▼────┐              ┌────▼────┐
+        │ vLLM   │   replicas   │ vLLM   │   …          │ RayServe│   <- ch 03/07/08
+        │ 8B     │ (HPA/KEDA)   │ 70B TP4│              │ 405B    │
+        └───┬────┘              └───┬────┘              └────┬────┘
+            │                       │                        │
+        ┌───▼───────────────────────▼────────────────────────▼───┐
+        │  GPU nodes  (Operator · MIG/DRA · NVLink/RDMA · DCGM)   │  <- ch 01/02/06
+        └─────────────────────────────────────────────────────────┘
+                        │ metrics
+        ┌───────────────▼────────────────────────────────────────────┐
+        │  Prometheus · Grafana · alerts · traces (ch 05/13)          │
+        └─────────────────────────────────────────────────────────────┘
+        Everything above is GitOps-managed (Argo CD) - ch 14
+```
 
-## Scope
+If you read nothing else, take this: **a model that fits one GPU is a Deployment problem; a model
+that needs many GPUs is a scheduling and networking problem.** Chapters 06-08 are where that line
+gets crossed.
 
-This is a written series, not a runnable lab kit - the YAML in each chapter is illustrative and
-production-shaped, meant to be read and adapted, not applied blind. It assumes you bring your own GPU
+## Where to start
+
+You don't have to read every chapter to get value. Pick the entry point that matches you:
+
+- **New to GPUs on Kubernetes?** Start at the top - [chapter 01](kube-vllm/01-gpu-k8s-fundamentals.md). The plumbing matters more than it looks.
+- **Already serving a single GPU and hitting limits?** Jump to [chapter 06](kube-vllm/06-distributed-inference.md) for distributed inference.
+- **Just want the reference architecture?** Go straight to [chapter 14](kube-vllm/14-reference-architecture-gitops.md) and work backwards.
+- **Chasing a GPU bill?** [Chapter 10](kube-vllm/10-autoscaling-capacity-cost.md) is about capacity and cost.
+
+Otherwise, read it in order. The chapters build on each other.
+
+## The series
+
+**Part A - Foundations (single node)**
+
+| # | Chapter | What it covers |
+|---|---------|----------------|
+| 01 | [GPU + Kubernetes fundamentals](kube-vllm/01-gpu-k8s-fundamentals.md) | device plugin, CDI, MIG/MPS/time-slicing/DRA, taints, topology |
+| 02 | [GPU Operator](kube-vllm/02-gpu-operator.md) | ClusterPolicy, DCGM, GFD/NFD, driver strategy |
+| 03 | [Deploying vLLM](kube-vllm/03-vllm-deployment.md) | `vllm serve`, the V1 engine, modern flags, probes, sizing |
+| 04 | [Storage & models](kube-vllm/04-storage-and-models.md) | PVC strategies, fast model loading, OCI modelcars |
+| 05 | [Operations & monitoring](kube-vllm/05-operations-monitoring.md) | vLLM V1 metrics, DCGM, Prometheus/Grafana, KEDA basics |
+
+**Part B - Distributed & production**
+
+| # | Chapter | What it covers |
+|---|---------|----------------|
+| 06 | [Distributed inference](kube-vllm/06-distributed-inference.md) | tensor/pipeline parallelism, when to go multi-GPU |
+| 07 | [RayService production serving](kube-vllm/07-rayservice-production-serving.md) | KubeRay RayService + Ray Serve LLM, GCS fault tolerance, upgrades |
+| 08 | [LeaderWorkerSet multi-node](kube-vllm/08-leaderworkerset-multinode.md) | native multi-node sharding, gang scheduling |
+| 09 | [LLM gateway & routing](kube-vllm/09-llm-gateway-routing.md) | Gateway API Inference Extension, KV/prefix-aware routing, P/D |
+| 10 | [Autoscaling, capacity & cost](kube-vllm/10-autoscaling-capacity-cost.md) | scale-to-zero, capacity math, spot, the cost levers |
+| 11 | [Reliability & rollouts](kube-vllm/11-reliability-rollouts.md) | PDBs, GPU failure, multi-AZ, canary/blue-green model rollouts |
+| 12 | [Security & multi-tenancy](kube-vllm/12-security-multitenancy.md) | NetworkPolicy, authn/z, mTLS, isolation, weight supply chain |
+| 13 | [Benchmarking & observability](kube-vllm/13-benchmarking-observability.md) | load testing, SLOs, golden signals, tracing |
+| 14 | [Reference architecture & GitOps](kube-vllm/14-reference-architecture-gitops.md) | the full blueprint, Helm + Argo CD, environment promotion |
+
+There's also a [version matrix](kube-vllm/README.md#version-matrix-what-current-means-here) that
+pins what "current" means for every component referenced here.
+
+## How each chapter is written
+
+Every chapter carries three tiers of field notes, so you can read for your own role and skim the
+rest:
+
+| Tier | Written for | Focus |
+|------|-------------|-------|
+| **Senior Dev tip** | Application / model engineers | engine flags, model behavior, request shaping, KV cache |
+| **Senior DevOps tip** | Platform / SRE | scheduling, rollout, failure modes, observability, cost |
+| **Architect tip** | Staff / principal | trade-offs, topology, capacity, org boundaries, build-vs-buy |
+
+A note on scope: this is a written series, not a runnable lab kit. The YAML in each chapter is
+illustrative and production-shaped - read it, adapt it, don't apply it blind. You bring your own GPU
 cluster. Where a choice is cloud- or hardware-specific, the trade-off is called out rather than
 hidden behind one vendor.
 
+## Read it as a site
+
 ```bash
-git clone https://github.com/Open-The-Gates/vllm-on-kubernetes.git
+git clone https://github.com/a-oukacha/vllm-on-kubernetes.git
 cd vllm-on-kubernetes
-# read it as a site:
 make serve        # docsify on localhost:3009
 ```
 
-## Status / TODO
+Or just open the Markdown files in [`kube-vllm/`](kube-vllm/) - they read fine on their own.
 
-- [ ] vLLM moves fast; flags and the V1 engine notes are current as of early 2026 and will need a
-      refresh as releases land.
-- [ ] The RayService and LeaderWorkerSet chapters could use a worked failure-injection example.
-- [ ] Add a short "minimum viable single-GPU" appendix for people without a multi-node cluster.
+## Contributing
+
+Corrections, sharper trade-offs, and war stories are all welcome - vLLM moves fast and some of this
+will drift. Found something out of date or plain wrong? Open an issue or a PR. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the (short) ground rules.
+
+A few things on the roadmap:
+
+- [ ] Refresh flags and V1-engine notes as new vLLM releases land.
+- [ ] A worked failure-injection example for the RayService and LeaderWorkerSet chapters.
+- [ ] A short "minimum viable single-GPU" appendix for people without a multi-node cluster.
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE). Use it, fork it, teach from it.

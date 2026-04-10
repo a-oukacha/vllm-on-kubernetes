@@ -1,9 +1,6 @@
 # 12 - Security & Multi-Tenancy
 
-> **Scope:** locking down an LLM serving platform - network isolation, authN/Z, secrets, tenant
-> isolation, supply chain for *weights* (not just images), and the LLM-specific threats (prompt
-> injection, data exfiltration, model theft). LLM endpoints are a new, high-value attack surface;
-> the GPU behind them is expensive enough to be worth stealing compute from.
+> Locking down an LLM serving platform covers network isolation, authN/Z, secrets, tenant isolation, the supply chain for *weights* (not just images), and the LLM-specific threats - prompt injection, data exfiltration, model theft - all of it sitting on a GPU expensive enough that someone will try to steal compute from it.
 
 ## The threat model (what's actually different about LLMs)
 
@@ -18,9 +15,9 @@
 
 **Architect tip: an LLM endpoint is simultaneously a compute resource** (expensive, abusable),
 a **data conduit (everything flowing through is sensitive), and a decision-maker** (in your
-anti-fraud/due-diligence platforms its output drives actions). Each demands different controls: rate
+anti-fraud/due-diligence platforms its output drives actions). Each role demands different controls: rate
 limiting + auth for the compute, encryption + isolation for the data, and guardrails + audit for the
-decisions. Don't secure it like a stateless API - it's all three at once.
+decisions. A stateless API gets one set of controls; this needs all three at once.
 
 ---
 
@@ -91,10 +88,10 @@ spec:
 ```
 
 **Architect tip:** this is straight **zero-trust** applied to inference - the network is hostile,
-identity is enforced every hop, and the engine trusts *only* the gateway's SA, not "anything in the
+identity gets enforced every hop, and the engine trusts *only* the gateway's SA, not "anything in the
 namespace". The gateway becomes your single policy decision point (PDP): authN, authZ, rate limits,
-and audit all live there. A vLLM pod reachable directly, bypassing the gateway, is a hole that
-voids every policy above it. mTLS STRICT + AuthorizationPolicy closes it.
+and audit all live there. A vLLM pod reachable directly, bypassing the gateway, voids every policy
+above it. mTLS STRICT + AuthorizationPolicy closes that hole.
 
 ---
 
@@ -135,8 +132,8 @@ and KV-aware routing (doc 09) are throughput wins, but a shared prefix cache acr
 *side channel* - timing differences can reveal whether another tenant already submitted a given
 prompt, and careless KV reuse could leak content. For a multi-tenant FinTech/regulated platform,
 **partition the cache by tenant** (per-tenant pools, or cache keyed with a tenant salt) or don't
-share replicas across trust boundaries at all. Decide the isolation tier from the tenants' trust
-level and your compliance obligations - then the cache-sharing question answers itself.
+share replicas across trust boundaries at all. Pick the isolation tier from the tenants' trust
+level and your compliance obligations; that decision already settles the cache-sharing question.
 
 ---
 
@@ -194,12 +191,12 @@ Mitigations live above vLLM (your app/agent layer) but the platform enables them
 - **PII redaction & scoped retrieval** so the model only sees what the caller is entitled to.
 - **Don't log raw prompts/responses** to systems without the same data classification as the source.
 
-**Architect tip:** the serving platform's job is to make the *insecure thing hard and the secure
-thing easy* - provide a sandboxed tool-execution sidecar pattern, a guardrail/validation step in the
-gateway path, and a "context never leaves its classification" data contract. Prompt-injection defense
-is ultimately an application-layer problem, but a platform that ships sandboxing and redaction as
-paved-road defaults prevents every team from getting it wrong independently. Treat model output as
-**untrusted user input** everywhere downstream - that one mental model closes most of the class.
+**Architect tip:** the serving platform's job is to make the secure path the easy one - provide a
+sandboxed tool-execution sidecar pattern, a guardrail/validation step in the gateway path, and a
+"context never leaves its classification" data contract. Prompt-injection defense is ultimately an
+application-layer problem, but a platform that ships sandboxing and redaction as paved-road defaults
+prevents every team from getting it wrong independently. Treat model output as **untrusted user
+input** everywhere downstream - that one mental model closes most of the class.
 
 ---
 

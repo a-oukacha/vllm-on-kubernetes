@@ -1,8 +1,6 @@
 # 14 - Reference Architecture & GitOps
 
-> **Scope:** assemble docs 01-13 into one coherent, declaratively-managed platform. The full
-> blueprint, the layer-by-layer component choices, Helm/Argo CD packaging, environment promotion,
-> and the decision matrices that tell a new team what to pick. This is the "put it all together" doc.
+This is the capstone. Everything from docs 01-13 comes together here into one coherent, declaratively-managed platform: the full blueprint, the layer-by-layer component choices, Helm/Argo CD packaging, environment promotion, and the decision matrices that tell a new team what to pick.
 
 ## The full production blueprint
 
@@ -165,8 +163,8 @@ dev (scale-to-zero, L4/L40S, latest)  ->  staging (prod-like, canary, eval gates
 
 **Architect tip:** promote the **exact artifact**, not a rebuild. The model image digest and
 engine version that passed benchmarks (doc 13) and eval gates (doc 11) in staging are the *same
-digests* that go to prod - promotion is a values-file bump (one line), reviewed and merged, not a
-fresh build that could differ. For a regulated decision system, "the thing we tested is byte-for-byte
+digests* that go to prod. Promotion is a one-line values-file bump, reviewed and merged. A fresh
+build could differ, so you never do one. For a regulated decision system, "the thing we tested is byte-for-byte
 the thing in prod" is an audit requirement, and immutable digests + GitOps make it provable from the
 commit history alone.
 
@@ -222,7 +220,7 @@ priority for a maturing platform:
  between self-hosted and managed on cost/quality (extends doc 09).
 
 **Architect tip: the end state isn't "we run vLLM well" - it's "model serving is a utility our
-product teams consume without thinking about GPUs**". When onboarding a model is a reviewed one-file
-PR, when cost-per-token is a dashboard, when a bad rollout auto-rolls-back on an eval gate, and when
-the whole thing reconstructs from `git clone` + Argo CD - that's production-grade. The infrastructure
-should be the boring, reliable part; the interesting work moves up to the models and the products.
+product teams consume without thinking about GPUs**". You know you're there when onboarding a model is a reviewed one-file
+PR, cost-per-token lives on a dashboard, a bad rollout auto-rolls-back on an eval gate, and the whole
+thing reconstructs from `git clone` + Argo CD. The infrastructure
+should be the boring, reliable part. The interesting work moves up to the models and the products.

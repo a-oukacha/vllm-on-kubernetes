@@ -1,16 +1,16 @@
 # 08 - LeaderWorkerSet: Native Multi-Node Serving
 
-> **Scope: running one model sharded across N nodes with LeaderWorkerSet (LWS)** - a
-> Kubernetes-SIG API purpose-built for multi-host inference. This is the leaner, more K8s-native
-> alternative to RayService (doc 07) for the common case: "serve this big model across several nodes".
+> This doc shards one model across N nodes with **LeaderWorkerSet (LWS)**, a Kubernetes-SIG API
+> built for multi-host inference. For the common case - "serve this big model across several nodes" -
+> it's the leaner, more K8s-native alternative to RayService (doc 07).
 
 ## The problem LWS solves
 
-A Deployment scales *independent, identical* pods. But a model sharded with TP+PP isn't independent
-pods - it's one logical replica made of many cooperating pods (a leader that serves the API +
-workers that hold model shards) that must be created together, scheduled together, and **restarted
-together** if any one dies. Deployments and StatefulSets can't express that. LWS adds exactly that
-primitive: a **group** (leader + workers) is the unit of replication.
+A Deployment scales *independent, identical* pods. A model sharded with TP+PP is the opposite shape:
+one logical replica made of many cooperating pods (a leader that serves the API + workers that hold
+model shards). Those pods must be created together, scheduled together, and **restarted together** if
+any one dies. Neither Deployments nor StatefulSets can express that. LWS adds exactly that primitive:
+a **group** (leader + workers) is the unit of replication.
 
 ```
 LeaderWorkerSet (replicas: 2)
@@ -20,10 +20,10 @@ LeaderWorkerSet (replicas: 2)
 ```
 
 **Architect tip:** LWS is the right default for multi-node *serving* in 2026. It's a thin,
-purpose-built CRD (no Ray control plane to operate), it gang-schedules cleanly, it's topology-aware
+purpose-built CRD with no Ray control plane to operate, it gang-schedules cleanly, it's topology-aware
 (below), and it's what the inference gateway ecosystem (doc 09) targets. Reach back to RayService
-(07) only when you need Ray Serve's application features. For "make this 405B answer requests," LWS
-is less to run.
+(07) only when you need Ray Serve's application features. To just make a 405B model answer requests,
+LWS is far less to run.
 
 ---
 
@@ -148,11 +148,11 @@ metadata:
     kueue.x-k8s.io/queue-name: gpu-queue        # Kueue admits the whole group atomically
 ```
 
-**Architect tip:** gang scheduling is non-optional once you run *more than one* multi-node model
-on a shared cluster. Without it, two 16-GPU deployments racing for a 24-GPU cluster can each grab 12
-and both hang forever - a deadlock no amount of "just add retries" fixes. Standardize on Kueue (or
-Volcano) as the admission layer for all multi-node GPU work from day one; retrofitting it after a
-deadlock incident is painful.
+**Architect tip:** once you run *more than one* multi-node model on a shared cluster, gang
+scheduling stops being optional. Without it, two 16-GPU deployments racing for a 24-GPU cluster can
+each grab 12 and both hang forever - a deadlock no amount of "just add retries" fixes. Standardize on
+Kueue (or Volcano) as the admission layer for all multi-node GPU work from day one; retrofitting it
+after a deadlock incident is painful.
 
 ---
 

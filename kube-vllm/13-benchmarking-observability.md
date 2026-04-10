@@ -1,16 +1,16 @@
 # 13 - Benchmarking & Observability
 
-> **Scope:** how to *measure* an LLM serving system - load testing to find the real capacity curve,
-> defining SLOs that map to UX, and the golden signals + tracing that tell you why latency moved.
-> Every capacity and autoscaling number in docs 05/10 comes from here. You cannot size, scale, or
-> SLO what you haven't benchmarked.
+Measuring an LLM serving system is its own skill. Load testing to find the real capacity curve.
+Defining SLOs that map to UX. The golden signals and tracing that tell you why latency moved. Every
+capacity and autoscaling number in docs 05/10 traces back to the work here. You can't size, scale, or
+SLO what you haven't benchmarked.
 
 ## Why LLM benchmarking is its own skill
 
 A web service has one latency number. An LLM has a **latency *curve* in two dimensions** (TTFT and
 TPOT) that bends sharply with concurrency, prompt length, and output length. "It does 2000 tokens/sec"
-is meaningless without "at what concurrency, what prompt size, within what latency SLO". You're not
-measuring a point; you're mapping a surface.
+is meaningless without "at what concurrency, what prompt size, within what latency SLO". The thing you
+map is a surface, not a single point.
 
 **Senior Dev tip: there are two regimes and you must benchmark both. Latency-bound** (low
 concurrency, interactive): TTFT and TPOT dominate, batch is small, the GPU is underfed. **Throughput-

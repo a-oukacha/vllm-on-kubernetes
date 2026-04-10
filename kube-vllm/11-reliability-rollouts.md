@@ -1,9 +1,10 @@
 # 11 - Reliability & Rollouts
 
-> **Scope:** keeping the service up through node failures, GPU faults, upgrades, and model swaps - 
-> PodDisruptionBudgets, GPU failure handling, multi-AZ, and **canary/blue-green model rollouts**.
-> LLM serving has failure modes web services don't (a single bad GPU silently corrupts a whole TP
-> group), and rollouts you can't do naïvely (you can't "rolling update" a model whose outputs changed).
+Keeping the service up is the whole job here. Node failures, GPU faults, upgrades, model swaps - we cover
+PodDisruptionBudgets, GPU failure handling, multi-AZ, and **canary/blue-green model rollouts**. LLM
+serving carries failure modes web services never see: a single bad GPU can silently corrupt a whole TP
+group. And some rollouts simply don't tolerate the naïve approach - you can't "rolling update" a model
+whose outputs changed.
 
 ## The reliability model: what can fail
 
@@ -16,8 +17,8 @@
 | Bad model rollout | every request, instantly | canary/blue-green, not rolling |
 | Bad config/flag | every replica | progressive rollout + fast rollback (GitOps, doc 14) |
 
-**Architect tip:** for your domain (anti-fraud scoring, due-diligence QA) the worst failure isn't
-*downtime* - it's **silent wrongness**: a degraded GPU producing subtly corrupted logits, or a model
+**Architect tip:** for your domain (anti-fraud scoring, due-diligence QA) the worst failure is
+**silent wrongness**, not *downtime*: a degraded GPU producing subtly corrupted logits, or a model
 rollout that quietly changes answers. Downtime pages you; silent wrongness ships bad decisions to
 production. Invest in *correctness* signals (output canaries, eval gates on rollout, XID alerting),
 not just uptime probes. A 99.99%-available endpoint serving corrupted outputs is worse than a clear outage.
@@ -48,9 +49,9 @@ proceed. For a single-replica model, a PDB can't help - run at least two.
 
 ## GPU failure handling - the LLM-specific one
 
-A failing GPU is the nastiest LLM failure: it may not crash, just emit **XID errors** and produce
-garbage or hang NCCL - taking down an entire TP group. You must detect and *evict the node*, not
-restart the pod onto the same bad hardware.
+A failing GPU is the nastiest LLM failure. It may not crash at all - instead it emits **XID errors**
+and produces garbage or hangs NCCL, taking down an entire TP group. The fix is to detect it and
+*evict the node*, never to restart the pod onto the same bad hardware.
 
 ```yaml
 # PrometheusRule: page on XID errors, then automate cordon
@@ -108,9 +109,9 @@ across AZs. HA across AZs at the replica level; locality within AZ at the group 
 
 ## Model rollouts - you cannot "rolling update" a model
 
-Swapping `llama3-v1` -> `llama3-v2` isn't a code deploy. Outputs change. A rolling update mixes both
-versions across live traffic with no control and no clean rollback. Use **canary** or **blue-green**,
-driven at the gateway (doc 09).
+Swapping `llama3-v1` -> `llama3-v2` changes the outputs your users see, which makes it a different
+beast from shipping code. A rolling update mixes both versions across live traffic with no control and
+no clean rollback. Use **canary** or **blue-green**, driven at the gateway (doc 09).
 
 ### Canary (gradual traffic shift)
 ```yaml

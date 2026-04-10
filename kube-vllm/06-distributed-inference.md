@@ -1,9 +1,10 @@
 # 06 - Distributed Inference: The Concepts
 
-> **Scope:** the *why* and *how* of splitting one model across many GPUs/nodes - parallelism
-> strategies, interconnect, and the math. This doc is concepts; the production deployment
-> patterns are [07 RayService](07-rayservice-production-serving.md) and
-> [08 LeaderWorkerSet](08-leaderworkerset-multinode.md). Read this first so those make sense.
+Splitting one model across many GPUs and nodes is its own discipline. This doc covers the *why*
+and *how* - parallelism strategies, interconnect, and the math behind both. It stays at the
+concept level; the production deployment patterns live in
+[07 RayService](07-rayservice-production-serving.md) and
+[08 LeaderWorkerSet](08-leaderworkerset-multinode.md). Read this first so those make sense.
 
 ## When you actually need this
 
@@ -52,9 +53,9 @@ large MoE serving.
 - `--data-parallel-size N` (Ray Serve exposes `build_dp_openai_app`, see doc 07).
 
 **Senior Dev tip:** the canonical large-MoE recipe is **TP within a node + EP across the
-expert dimension + DP for attention**, not naïve TP across everything. Pure TP across many nodes
-drowns in all-reduce traffic. Match the parallelism axis to *what the model does*: dense models ->
-TP (+PP across nodes); MoE -> TP+EP(+DP).
+expert dimension + DP for attention**. Naïve TP across everything drowns in all-reduce traffic once
+you span many nodes. Match the parallelism axis to *what the model does*: dense models -> TP (+PP
+across nodes); MoE -> TP+EP(+DP).
 
 ---
 
@@ -141,10 +142,10 @@ B) 8×H100 80GB on 1 node, FP8   -> TP 8          - ~405GB fits; NO multi-node! 
 C) 24×A100 80GB across 3 nodes  -> TP 8 × PP 3   - needs IB; more KV cache headroom/throughput
 ```
 
-**Architect tip:** option B - FP8 on a single 8×H100 node - usually wins on latency, cost,
-*and* operational simplicity for 405B. The instinct to "go multi-node for the big model" is often
-the more expensive, more fragile path. Quantization is a topology decision, not just a memory one:
-it can collapse a 2-node cluster into a 1-node Deployment.
+**Architect tip:** option B - FP8 on a single 8×H100 node - usually wins on latency and
+operational simplicity for 405B, and it's cheaper too. The instinct to "go multi-node for the big
+model" tends to cost more and break more often. Quantization is a topology decision, not just a
+memory one: it can collapse a 2-node cluster into a 1-node Deployment.
 
 ---
 
@@ -161,9 +162,9 @@ Both run multi-node vLLM; they differ in philosophy:
 | Ecosystem | Ray dashboard, Serve, KubeRay | Kueue/topology-aware scheduling, GIE-friendly |
 
 **Architect tip:** default to LeaderWorkerSet for "just serve this big model across N nodes"
- - it's the leaner, more Kubernetes-native primitive and integrates cleanly with the inference
+ - it's the leaner Kubernetes-native primitive and integrates cleanly with the inference
 gateway (doc 09) and topology-aware scheduling. Reach for **RayService** when you need Ray Serve's
-*application* features: autoscaling replicas, multi-model composition, request graphs, or you're
+*application* features: autoscaling replicas, multi-model composition and request graphs, or you're
 already a Ray shop. Don't run Ray's control plane just to launch one model - that's complexity you
 pay for daily.
 

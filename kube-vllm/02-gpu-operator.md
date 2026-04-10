@@ -1,7 +1,6 @@
 # 02 - NVIDIA GPU Operator
 
-> **Scope:** the one Helm release that turns bare GPU nodes into schedulable, observable,
-> partitionable Kubernetes capacity - and the production decisions hidden in its defaults.
+One Helm release turns bare GPU nodes into schedulable, observable, partitionable Kubernetes capacity. The production decisions live in its defaults.
 
 ## What problem it solves
 
@@ -57,8 +56,8 @@ kubectl get nodes -l nvidia.com/gpu.deploy.driver=true
 ```
 
 **Senior DevOps tip:** add `--wait` and watch the `nvidia-operator-validator` pod - it runs
-a CUDA workload and only then flips the node to "GPU ready". If you deploy vLLM before the
-validator passes, the pod schedules onto a not-yet-ready node and CrashLoops. Gate your app
+a CUDA workload and only then flips the node to "GPU ready". Deploy vLLM before the
+validator passes and the pod schedules onto a not-yet-ready node, then CrashLoops. Gate your app
 rollout (Argo CD sync wave, or an init-container probe) on the validator, not just node `Ready`.
 
 ---
@@ -169,7 +168,7 @@ on a canary pool first.
 ## DCGM Exporter - the GPU half of observability
 
 DCGM (Data Center GPU Manager) exports the metrics that tell you whether your GPUs are
-*actually working* vs idle-but-allocated.
+*actually working* rather than just allocated and sitting idle.
 
 ```bash
 kubectl port-forward -n gpu-operator svc/nvidia-dcgm-exporter 9400:9400
@@ -211,8 +210,8 @@ pods, repartitions, then uncordons. Plan it like a node maintenance, not a confi
 **Architect tip:** MIG is the right multi-tenant isolation primitive, but it fragments
 capacity - seven `1g.10gb` slices can't be reassembled for one 70B model without a disruptive
 reconfigure. Don't MIG your *whole* fleet. Keep a pool of whole-GPU/NVLink nodes for big models
-and a MIG pool for many-small-model tenants. Capacity that can't change shape is capacity you'll
-strand.
+and a MIG pool for many-small-model tenants. If capacity can't change shape, you'll end up
+stranding it.
 
 ---
 

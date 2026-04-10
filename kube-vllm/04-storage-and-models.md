@@ -1,7 +1,7 @@
 # 04 - Storage & Model Management
 
-> **Scope:** where weights live, how they get there, and - the part most guides skip - how to
-> make a 140GB model *load in under a minute* instead of eight. Cold-start is a production SLO.
+Cold-start is a production SLO. This doc covers where weights live, how they get there, and the
+part most guides skip: how to make a 140GB model *load in under a minute* instead of eight.
 
 ## The three problems
 
@@ -14,8 +14,8 @@ pays the load cost. A 70B model that takes 8 minutes to load means your autoscal
 behind demand.
 
 **Architect tip:** model load time *is* your effective scale-up latency. Capacity planning
-that assumes instant replicas is wrong by minutes. Either keep warm headroom (doc 10) or invest
-in fast loading - there is no third option that meets a tight SLO.
+that assumes instant replicas is wrong by minutes. To meet a tight SLO you either keep warm
+headroom (doc 10) or invest in fast loading. Nothing else gets you there.
 
 ---
 
@@ -52,15 +52,16 @@ volumes:
 
 **Senior DevOps tip:** NFS throughput, not the GPU, is often the cold-start bottleneck - 20
 pods loading a 140GB model simultaneously from one NFS export will thunder-herd the filer and
-serialize. Measure the filer's aggregate read bandwidth and divide by replica count; if that's
-below ~1GB/s/pod your loads will crawl. Parallel FS or per-node NVMe cache fixes it.
+serialize. Measure the filer's aggregate read bandwidth, divide by replica count, and if you land
+below ~1GB/s/pod your loads will crawl. Parallel FS or a per-node NVMe cache fixes it.
 
 ---
 
 ## Option 2 - Object storage + fast streaming (the modern cloud path)
 
-Don't `aws s3 sync` 140GB to a local disk and *then* load it - that's two copies of the wait.
-Stream weights **directly into VRAM** with the **Run:ai Model Streamer** (built into vLLM):
+Skip the `aws s3 sync` of 140GB to local disk followed by a separate load step. That pays the
+wait twice. Stream weights **directly into VRAM** with the **Run:ai Model Streamer** (built into
+vLLM):
 
 ```yaml
 args:
